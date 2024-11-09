@@ -348,8 +348,5 @@ for index, row in df.iterrows():
     elif (pd.notna(mod_name) and mod_name.lower() in setOfProperNouns):
         matching_entries[mod_name] = row.to_dict()
 
-# Print the dictionary containing the matching entries
-print(matching_entries)
-
 with open('matching_entries.json', 'w') as json_file:
     json.dump(matching_entries, json_file, indent=4)
