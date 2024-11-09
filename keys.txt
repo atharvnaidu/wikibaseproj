@@ -1,0 +1,15 @@
+Your OAuth consumer has been created.
+
+Your tokens are:
+
+Consumer token
+22469468ff12f2768856fdcf82cc9753
+Consumer secret
+6500a8352375be7beda3cfc168a81a3f47d64e96
+Access token
+07b04f3614348e79ef2d976f30043729
+Access secret
+70dc242b94df090d5527612f41b71d84b3dabb47
+Please record these for future reference.
+
+Return to Main Page.
