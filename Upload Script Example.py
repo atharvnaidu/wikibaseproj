@@ -320,33 +320,57 @@ SELECT ?lex ?lemma WHERE {{
          wikibase:lemma ?lemma .
 }}
 """
+import pandas as pd
+import json
+import Levenshtein
+import unicodedata
+import re
 
+# Function to remove accents, non-alphanumeric characters, and convert to lowercase
+def normalize_string(s):
+    # Normalize the string to NFD (decomposed form)
+    s = unicodedata.normalize('NFD', s)
+    # Remove diacritical marks (category Mn represents marks)
+    s = ''.join([c for c in s if unicodedata.category(c) != 'Mn'])
+    # Keep only alphanumeric characters (a-zA-Z0-9)
+    s = re.sub(r'[^a-zA-Z0-9]', '', s)
+    return s.lower()  # Ensure the string is lowercase
 
+# Query results and dataframe
 properNounQueryResults = wbwh.query(properNounQuery)
-
-#print(properNounQueryResults[-1]['lemma'])
-#print(properNounQueryResults[-1]['lemma']['value'])
-
 df = pd.read_csv('CIGS v1.5 Nov 30 2022.csv')
-AncientNamesColumn = df['anc_name'].values
 
-setOfProperNouns = set()
+# Normalize the proper nouns
+listOfProperNouns = [normalize_string(val['lemma']['value']) for val in properNounQueryResults if val['lemma']['value']]
 
-
-for val in properNounQueryResults:
-    setOfProperNouns.add(val['lemma']['value'])
+print(listOfProperNouns)
 
 matching_entries = {}
 
-for index, row in df.iterrows():
-    anc_name = row['anc_name'] 
-    mod_name = row['transc_name']
-    print(anc_name)
-    if (pd.notna(anc_name) and anc_name.lower() in setOfProperNouns):
-        # Add the matching entry and its features to the dictionary
-        matching_entries[anc_name] = row.to_dict()
-    elif (pd.notna(mod_name) and mod_name.lower() in setOfProperNouns):
-        matching_entries[mod_name] = row.to_dict()
+threshold = 0.82  # Adjust between 0 (no similarity) to 1 (perfect match)
 
+# Process rows in the dataframe
+for _, row in df.iterrows():
+    anc_name = row['anc_name']
+    mod_name = row['transc_name']
+    
+    # Process and compare each name
+    for name in [anc_name, mod_name]:
+        if pd.notna(name):
+            normalized_name = normalize_string(name)  # Normalize to lowercase
+            print([name, normalized_name])
+            for proper_noun in listOfProperNouns:
+                # Calculate similarity as normalized Levenshtein distance
+                if max(len(normalized_name), len(proper_noun)) != 0:
+                    similarity = 1 - Levenshtein.distance(normalized_name, proper_noun) / max(len(normalized_name), len(proper_noun))
+                else:
+                    similarity = 0
+                if similarity > threshold:
+                    matching_entries[name] = row.to_dict()
+                    matching_entries[name]['similarity_to'] = proper_noun
+                    matching_entries[name]['similarity_score'] = similarity
+                    break
+
+# Save the matching entries to a JSON file
 with open('matching_entries.json', 'w') as json_file:
     json.dump(matching_entries, json_file, indent=4)
